@@ -47,3 +47,18 @@ func (mr *MockDbMockRecorder) GetAllEmployees() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllEmployees", reflect.TypeOf((*MockDb)(nil).GetAllEmployees))
 }
+
+// GetOneWithId mocks base method.
+func (m *MockDb) GetOneWithId(id string) (Employee, CustomError) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOneWithId", id)
+	ret0, _ := ret[0].(Employee)
+	ret1, _ := ret[1].(CustomError)
+	return ret0, ret1
+}
+
+// GetOneWithId indicates an expected call of GetOneWithId.
+func (mr *MockDbMockRecorder) GetOneWithId(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOneWithId", reflect.TypeOf((*MockDb)(nil).GetOneWithId), id)
+}

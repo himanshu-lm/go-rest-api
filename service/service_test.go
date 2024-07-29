@@ -2,6 +2,9 @@ package service
 
 import (
 	"database/sql"
+	"fmt"
+
+	// "fmt"
 	"net/http"
 	"testing"
 
@@ -27,12 +30,14 @@ func TestGetAllEmployees(t *testing.T) {
 	r := gin.Default()
 
 	// mycode
-	mockDb.EXPECT().GetAllEmployees().DoAndReturn(func(id int) Employee {
-		return Employee{
-			User_id: 1,
-			Fname:   "bob",
-			Lname:   "marley",
-			Age:     28,
+	mockDb.EXPECT().GetAllEmployees().DoAndReturn(func(id int) []Employee {
+		return []Employee{
+			{
+				User_id: 1,
+				Fname:   "bob",
+				Lname:   "marley",
+				Age:     28,
+			},
 		}
 	}).AnyTimes()
 
@@ -74,4 +79,92 @@ func TestGetAllEmployees(t *testing.T) {
 
 	// // Assert the mock expectations
 	// mockDb.AssertExpectations(t)
+}
+
+func TestGetOneWithId(t *testing.T) {
+	// Create a new instance of the mock
+	// mockDb := service.NewMockDb
+	ctrl := gomock.NewController(t)
+	gin.SetMode(gin.TestMode)
+	r := gin.Default()
+	// defer ctrl.Finish() // no need to call as *testing.T is already included in the NewController Method.
+	mockDb := NewMockDb(ctrl)
+	// Create a new Gin router
+	// r := gin.Default()
+
+	// mycode
+	// mockDb is a mock implementation of the Db interface. It has all the methods that we had in the original Db interfaces.
+	// mockDb is it's mock.
+
+	// EXPECT() this expects one of the methods from the mockDb interface. Here it is GetOneWithId(). The Return part just overrides
+	// methods definition and returns whatever we want to return
+
+	// these below are the actual testcases. Whenever we call them, it checks with the EXPECTS method so that the test cases
+	// are expeecting a particular method. The first string is just the name for the testcase.
+	mockDb.EXPECT().GetOneWithId("6").Return(Employee{
+		User_id: 6,
+		Fname:   "bob",
+		Lname:   "marley",
+		Age:     28,
+	}, CustomError{
+		msg: "expected error",
+		err: nil,
+	}).AnyTimes()
+	t.Run("Check if the response is not nil", func(t *testing.T) {
+		res, _ := mockDb.GetOneWithId("6")
+		assert.NotNil(t, res)
+	})
+	t.Run("Check if the length of response != 1", func(t *testing.T) {
+		res, _ := mockDb.GetOneWithId("6")
+		// assert.NotNil(t, res)
+		// assert.Len(t, res, 1)
+		assert.Equal(t, res, Employee{
+			User_id: 6,
+			Fname:   "bob",
+			Lname:   "marley",
+			Age:     28,
+		})
+	})
+
+	t.Run("Input is either + or - only", func(t *testing.T) {
+		mockDb.EXPECT().GetOneWithId("+").Return(Employee{
+			User_id: -1,
+			Fname:   "no",
+			Lname:   "name",
+			Age:     -1,
+		}, CustomError{
+			msg: "user id can not contain only + or -",
+			err: fmt.Errorf("Incorrect User ID Format"),
+		})
+
+		_, err := mockDb.GetOneWithId("+")
+		expectedErrorMsg := "Incorrect User ID Format"
+		assert.EqualErrorf(t, err.err, expectedErrorMsg, "Error should be: %v, got: %v", expectedErrorMsg, err.msg)
+	})
+	t.Run("Input is a non-numeric string", func(t *testing.T) {
+		mockDb.EXPECT().GetOneWithId("87ysf").Return(Employee{
+			User_id: -1,
+			Fname:   "no",
+			Lname:   "name",
+			Age:     -1,
+		}, CustomError{
+			msg: "Cannot use non-numeric as user ida",
+			err: fmt.Errorf("Incorrect User ID Format"),
+		})
+
+		_, err := mockDb.GetOneWithId("87ysf")
+		expectedErrorMsg := "Incorrect User ID Format"
+		assert.EqualErrorf(t, err.err, expectedErrorMsg, "Error should be: %v, got: %v", expectedErrorMsg, err.msg)
+	})
+	// t.Run("")
+	// Inject the mock into the handler
+	r.GET("/allemployees", func(c *gin.Context) {
+		employees, err := mockDb.GetAllEmployees()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve employees"})
+			return
+		}
+		c.JSON(http.StatusOK, employees)
+	})
+
 }

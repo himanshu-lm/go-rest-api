@@ -30,13 +30,19 @@ func NewEmployee(id int, fname, lname string, age int) Employee {
 }
 
 // ============================================================================================================
+
+type CustomError struct {
+	msg string
+	err error
+}
+
 type Database struct {
 	db *sql.DB
 }
 
 type Db interface {
 	GetAllEmployees() ([]Employee, error)
-	GetOneWithId(id int) Employee
+	GetOneWithId(id string) (Employee, CustomError)
 }
 
 func NewDatabase(db *sql.DB) Db {
@@ -73,13 +79,25 @@ func (d *Database) GetAllEmployees() ([]Employee, error) {
 	return employees, nil
 }
 
-func (d *Database) GetOneWithId(user_id int) Employee {
+func (d *Database) GetOneWithId(user string) (Employee, CustomError) {
 	var c *gin.Context
 	var employee Employee
+	var ce CustomError
+	// convert string User_id to int User_id
+	user_id, err := strconv.Atoi(user)
+	if err != nil {
+		ce.msg = "Incorrect User ID Format"
+		ce.err = fmt.Errorf("Incorrect User ID Format. %v\n", err)
+		return employee, ce
+	}
+
 	// return the employee after querying to the db
 	row, err := d.db.Query("SELECT * FROM user WHERE user_id = (?)", user_id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, "INCORRECT USER ID FORMAT")
+		ce.msg = "Unable to query from the database"
+		ce.err = err
+		return employee, ce
 	}
 
 	defer row.Close()
@@ -94,7 +112,8 @@ func (d *Database) GetOneWithId(user_id int) Employee {
 		c.JSON(http.StatusInternalServerError, "Something wrong with SQL server executing queries")
 		fmt.Errorf("GetUserWithID %d: %w", user_id, err)
 	}
-	return employee
+	ce.msg = "All clear"
+	return employee, ce
 }
 
 // ==========================================================================================
@@ -115,12 +134,16 @@ func HandleGetAllEmployees(db *sql.DB) gin.HandlerFunc {
 func GetUserWithID(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// send the converted json data
+
 		user := c.Params.ByName("User_id")
-		// convert string User_id to int User_id
-		user_id, _ := strconv.Atoi(user)
+
 		empDB := NewDatabase(db)
 
-		employee := empDB.GetOneWithId(user_id)
+		employee, queryErr := empDB.GetOneWithId(user)
+		if queryErr.err != nil {
+			errMsg := fmt.Errorf("an error occured while getting the requested Employee ID : %v", queryErr)
+			c.JSON(http.StatusBadRequest, gin.H{"An error occured from the client side. Check the requested ID. ": errMsg})
+		}
 		c.JSON(http.StatusOK, gin.H{"Employee": user, "value": employee})
 	}
 }
