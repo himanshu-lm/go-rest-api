@@ -28,7 +28,7 @@ func setupRouter() *gin.Engine {
 	r.GET("/employee/:User_id", service.GetUserWithID(EmployeeTable))
 
 	// create an employee
-	// r.POST("/create", service.CreateEmployee)
+	r.POST("/create", service.CreateEmployee(EmployeeTable))
 
 	// DELETE :delete a requested user with User_id
 	// r.DELETE("/delete/:User_id", service.DeleteEmployee)

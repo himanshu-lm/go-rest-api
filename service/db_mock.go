@@ -5,6 +5,7 @@
 package service
 
 import (
+	sql "database/sql"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -31,6 +32,21 @@ func NewMockDb(ctrl *gomock.Controller) *MockDb {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockDb) EXPECT() *MockDbMockRecorder {
 	return m.recorder
+}
+
+// CreateUsers mocks base method.
+func (m *MockDb) CreateUsers(emp []Employee, db *sql.DB) (bool, CustomError) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateUsers", emp, db)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(CustomError)
+	return ret0, ret1
+}
+
+// CreateUsers indicates an expected call of CreateUsers.
+func (mr *MockDbMockRecorder) CreateUsers(emp, db interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUsers", reflect.TypeOf((*MockDb)(nil).CreateUsers), emp, db)
 }
 
 // GetAllEmployees mocks base method.

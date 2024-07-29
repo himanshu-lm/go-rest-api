@@ -1,12 +1,14 @@
 package service
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 
+	// "github.com/eapache/go-resiliency/retrier"
 	"github.com/gin-gonic/gin"
 )
 
@@ -43,6 +45,7 @@ type Database struct {
 type Db interface {
 	GetAllEmployees() ([]Employee, error)
 	GetOneWithId(id string) (Employee, CustomError)
+	CreateUsers(emp []Employee, db *sql.DB) (bool, CustomError)
 }
 
 func NewDatabase(db *sql.DB) Db {
@@ -87,18 +90,18 @@ func (d *Database) GetOneWithId(user string) (Employee, CustomError) {
 	user_id, err := strconv.Atoi(user)
 	if err != nil {
 		ce.msg = "Incorrect User ID Format"
-		ce.err = fmt.Errorf("Incorrect User ID Format. %v\n", err)
+		ce.err = fmt.Errorf("incorrect User ID Format. %v", err)
 		return employee, ce
 	}
-
 	// return the employee after querying to the db
 	row, err := d.db.Query("SELECT * FROM user WHERE user_id = (?)", user_id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, "INCORRECT USER ID FORMAT")
-		ce.msg = "Unable to query from the database"
+		c.JSON(http.StatusBadRequest, "unable to query from the database")
+		ce.msg = "unable to query from the database"
 		ce.err = err
 		return employee, ce
 	}
+	fmt.Print("\n\nReached here\n\n")
 
 	defer row.Close()
 
@@ -107,13 +110,37 @@ func (d *Database) GetOneWithId(user string) (Employee, CustomError) {
 		if err == sql.ErrNoRows {
 			// when the requested id is not present in the database //
 			c.JSON(http.StatusNotFound, gin.H{"employee": user_id, "value": "no such employee exists with given user_id"})
-			fmt.Errorf("GetUserWithID %d: no such employee exists", user_id)
+			// fmt.Errorf("GetUserWithID %d: no such employee exists", user_id)
+		} else if err != nil {
+			c.JSON(http.StatusInternalServerError, "Something wrong with SQL server executing queries")
 		}
-		c.JSON(http.StatusInternalServerError, "Something wrong with SQL server executing queries")
-		fmt.Errorf("GetUserWithID %d: %w", user_id, err)
+		// fmt.Errorf("GetUserWithID %d: %w", user_id, err)
 	}
 	ce.msg = "All clear"
 	return employee, ce
+}
+
+func (d *Database) CreateUsers(newEmployee []Employee, db *sql.DB) (bool, CustomError) {
+	var ce CustomError
+	for i := 0; i < len(newEmployee); i++ {
+		insertResult, err := d.db.ExecContext(context.Background(), "INSERT INTO `user` VALUES(?, ?, ?, ?)", newEmployee[i].User_id, newEmployee[i].Fname, newEmployee[i].Lname, newEmployee[i].Age)
+		if err != nil {
+			log.Fatalf("Unable to insert values(%v, %v, %v, %v)", newEmployee[i].User_id, newEmployee[i].Fname, newEmployee[i].Lname, newEmployee[i].Age)
+			ce.msg = "unsuccessful insert operation"
+			ce.err = err
+			return false, ce
+		}
+		id, err := insertResult.LastInsertId()
+		if err != nil {
+			// c.JSON(http.)  // cannot find the right http status code
+			log.Fatalf("impossible to retrieve last inserted id: %s", err)
+			ce.msg = "impossible to retrieve last inserted id\n"
+			ce.err = err
+			return false, ce
+		}
+		log.Printf("inserted id: %d", id)
+	}
+	return true, ce
 }
 
 // ==========================================================================================
@@ -145,6 +172,21 @@ func GetUserWithID(db *sql.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"An error occured from the client side. Check the requested ID. ": errMsg})
 		}
 		c.JSON(http.StatusOK, gin.H{"Employee": user, "value": employee})
+	}
+}
+
+func CreateEmployee(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var newEmployee []Employee
+		empDB := NewDatabase(db)
+		// Call BindJSON to bind the received JSON to the employee struct
+		if err := c.BindJSON(&newEmployee); err != nil {
+			return
+		}
+
+		empDB.CreateUsers(newEmployee, db)
+		// employeeData = append(employeeData, newEmployee...)
+		c.IndentedJSON(http.StatusCreated, newEmployee)
 	}
 }
 

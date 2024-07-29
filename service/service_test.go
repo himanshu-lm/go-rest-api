@@ -27,34 +27,41 @@ func TestGetAllEmployees(t *testing.T) {
 	// defer ctrl.Finish() // no need to call as *testing .T is already included in the NewController Method.
 	mockDb := NewMockDb(ctrl)
 	// Create a new Gin router
-	r := gin.Default()
+	// r := gin.Default()
 
 	// mycode
-	mockDb.EXPECT().GetAllEmployees().DoAndReturn(func(id int) []Employee {
-		return []Employee{
-			{
-				User_id: 1,
-				Fname:   "bob",
-				Lname:   "marley",
-				Age:     28,
-			},
-		}
-	}).AnyTimes()
+	var myerr error
+	myerr = nil
+	mockDb.EXPECT().GetAllEmployees().Return([]Employee{
+		{
+			User_id: 1,
+			Fname:   "bob",
+			Lname:   "marley",
+			Age:     28,
+		},
+		{
+			User_id: 1,
+			Fname:   "bob",
+			Lname:   "marley",
+			Age:     28,
+		},
+	},
+		myerr).AnyTimes()
 
 	t.Run("Normal Test case for getting all", func(t *testing.T) {
-		res := HandleGetAllEmployees(EmployeeTable)
+		res, _ := mockDb.GetAllEmployees()
 		assert.NotNil(t, res)
 	})
 	// mycode
 	// Inject the mock into the handler
-	r.GET("/allemployees", func(c *gin.Context) {
-		employees, err := mockDb.GetAllEmployees()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve employees"})
-			return
-		}
-		c.JSON(http.StatusOK, employees)
-	})
+	// r.GET("/allemployees", func(c *gin.Context) {
+	// 	employees, err := mockDb.GetAllEmployees()
+	// 	if err != nil {
+	// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve employees"})
+	// 		return
+	// 	}
+	// 	c.JSON(http.StatusOK, employees)
+	// })
 
 	// // Create a mock response from the database
 	// mockEmployees := []Employee{
@@ -167,4 +174,38 @@ func TestGetOneWithId(t *testing.T) {
 		c.JSON(http.StatusOK, employees)
 	})
 
+}
+
+func TestCreateUsers(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	gin.SetMode(gin.TestMode)
+	// r := gin.Default()
+	mockDb := NewMockDb(ctrl)
+	emp := []Employee{
+		{
+			User_id: 21,
+			Fname:   "fname1",
+			Lname:   "lname`",
+			Age:     21,
+		},
+		{
+			User_id: 22,
+			Fname:   "fname2",
+			Lname:   "lname2",
+			Age:     32,
+		},
+	}
+	mockDb.EXPECT().CreateUsers(emp, EmployeeTable).Return(true, CustomError{
+		msg: "expected error",
+		err: nil,
+	}).AnyTimes()
+
+	t.Run("testcase 1 : check if all are inserted\n", func(t *testing.T) {
+		success, _ := mockDb.CreateUsers(emp, EmployeeTable)
+		assert.True(t, success)
+	})
+
+	// t.Run("testcase 2 : check for errors", func(t *testing.T) {
+
+	// })
 }
