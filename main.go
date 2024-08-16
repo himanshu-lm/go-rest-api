@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
 	"unittestexample/service"
 
 	"github.com/gin-gonic/gin"
@@ -68,8 +67,10 @@ func main() {
 	/*SQL CONNNECTION*/
 	// Capture connection properties.
 	cfg := mysql.Config{
-		User:   os.Getenv("DBUSER"),
-		Passwd: os.Getenv("DBPASS"),
+		// User:   os.Getenv("DBUSER"),
+		// Passwd: os.Getenv("DBPASS"),
+		User:   "root",
+		Passwd: "Harsh@123g",
 		Net:    "tcp",
 		Addr:   "127.0.0.1:3306",
 		DBName: "my_db_test",
