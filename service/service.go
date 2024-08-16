@@ -152,8 +152,10 @@ func HandleGetAllEmployees(db *sql.DB) gin.HandlerFunc {
 		employees, err := empDB.GetAllEmployees()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve employees"})
+			log.Fatalf("failed to retrieve message : %v", err)
 			return
 		}
+		log.Println("successfully got all the employees")
 		c.JSON(http.StatusOK, employees)
 	}
 }
@@ -168,9 +170,11 @@ func GetUserWithID(db *sql.DB) gin.HandlerFunc {
 
 		employee, queryErr := empDB.GetOneWithId(user)
 		if queryErr.err != nil {
-			errMsg := fmt.Errorf("an error occured while getting the requested Employee ID : %v", queryErr)
+			errMsg := fmt.Errorf("an error occured while getting the requested Employee ID : %v\n", queryErr)
+			log.Fatalf("%v\n", errMsg)
 			c.JSON(http.StatusBadRequest, gin.H{"An error occured from the client side. Check the requested ID. ": errMsg})
 		}
+		log.Println("successfully got the employee")
 		c.JSON(http.StatusOK, gin.H{"Employee": user, "value": employee})
 	}
 }
